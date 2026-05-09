@@ -1,0 +1,60 @@
+{
+  "baseUrl": "http://localhost:3001",
+  "requests": [
+    {
+      "name": "Create Draft",
+      "method": "POST",
+      "url": "{{baseUrl}}/pipeline/template/draft",
+      "headers": { "Content-Type": "application/json" },
+      "body": {
+        "userPrompt": "Crie uma mensagem para reengajar clientes que abandonaram o carrinho, com tom acolhedor e CTA para falar com atendimento.",
+        "businessContext": {
+          "companyName": "Aura Store",
+          "industry": "E-commerce de moda",
+          "brandVoice": "Empatico, claro e sem pressao comercial",
+          "description": "Loja online de roupas femininas",
+          "audience": "Clientes que navegaram ou compraram nos ultimos meses",
+          "complianceNotes": "Evitar promessas de desconto garantido"
+        },
+        "defaults": {
+          "category": "MARKETING",
+          "language": "pt_BR"
+        }
+      }
+    },
+    {
+      "name": "Approve Review",
+      "method": "POST",
+      "url": "{{baseUrl}}/pipeline/review/{{reviewSessionId}}/approve",
+      "headers": { "Content-Type": "application/json" },
+      "body": {
+        "reviewer": "Alissom",
+        "comment": "Aprovado para dry-run.",
+        "snapshotHash": "{{snapshotHash}}",
+        "snapshotVersion": 1
+      }
+    },
+    {
+      "name": "Compile Meta Payload",
+      "method": "POST",
+      "url": "{{baseUrl}}/pipeline/compiler/meta",
+      "headers": { "Content-Type": "application/json" },
+      "body": {
+        "reviewSessionId": "{{reviewSessionId}}",
+        "approvalToken": "{{approvalToken}}"
+      }
+    },
+    {
+      "name": "Submit Dry Run",
+      "method": "POST",
+      "url": "{{baseUrl}}/pipeline/meta/submit",
+      "headers": { "Content-Type": "application/json" },
+      "body": {
+        "reviewSessionId": "{{reviewSessionId}}",
+        "approvalToken": "{{approvalToken}}",
+        "compileChecksum": "{{compileChecksum}}",
+        "dryRun": true
+      }
+    }
+  ]
+}

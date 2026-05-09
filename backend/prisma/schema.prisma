@@ -3,9 +3,10 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-  schemas  = ["template_engine"]
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+  schemas   = ["template_engine"]
 }
 
 model Template {
@@ -54,30 +55,30 @@ model TemplateVersion {
 }
 
 model ReviewSession {
-  id                String          @id @default(uuid()) @db.Uuid
-  tenantId          String          @map("tenant_id") @db.Uuid
-  templateId        String          @map("template_id") @db.Uuid
-  templateVersionId String          @map("template_version_id") @db.Uuid
-  templateVersion   TemplateVersion @relation(fields: [templateVersionId], references: [id], onDelete: Cascade)
-  executionId       String?         @map("execution_id") @db.Uuid
+  id                String                   @id @default(uuid()) @db.Uuid
+  tenantId          String                   @map("tenant_id") @db.Uuid
+  templateId        String                   @map("template_id") @db.Uuid
+  templateVersionId String                   @map("template_version_id") @db.Uuid
+  templateVersion   TemplateVersion          @relation(fields: [templateVersionId], references: [id], onDelete: Cascade)
+  executionId       String?                  @map("execution_id") @db.Uuid
   status            String
-  reviewer          Json?           @db.JsonB
+  reviewer          Json?                    @db.JsonB
   comment           String?
-  snapshotHash      String?         @map("snapshot_hash")
-  snapshotVersion   Int?            @map("snapshot_version")
-  snapshotPayload   Json?           @map("snapshot_payload") @db.JsonB
-  approvalState     Json            @map("approval_state") @db.JsonB
-  decisionsPayload  Json            @default("[]") @map("decisions_payload") @db.JsonB
-  historyPayload    Json            @default("{}") @map("history_payload") @db.JsonB
-  decisionTrace     Json            @default("[]") @map("decision_trace") @db.JsonB
-  artifacts         Json            @default("[]") @db.JsonB
-  reviewResult      Json?           @map("review_result") @db.JsonB
-  approvalToken     String?         @map("approval_token")
-  decidedAt         DateTime?       @map("decided_at") @db.Timestamptz(6)
+  snapshotHash      String?                  @map("snapshot_hash")
+  snapshotVersion   Int?                     @map("snapshot_version")
+  snapshotPayload   Json?                    @map("snapshot_payload") @db.JsonB
+  approvalState     Json                     @map("approval_state") @db.JsonB
+  decisionsPayload  Json                     @default("[]") @map("decisions_payload") @db.JsonB
+  historyPayload    Json                     @default("{}") @map("history_payload") @db.JsonB
+  decisionTrace     Json                     @default("[]") @map("decision_trace") @db.JsonB
+  artifacts         Json                     @default("[]") @db.JsonB
+  reviewResult      Json?                    @map("review_result") @db.JsonB
+  approvalToken     String?                  @map("approval_token")
+  decidedAt         DateTime?                @map("decided_at") @db.Timestamptz(6)
   decisions         ReviewApprovalDecision[]
   events            ReviewHistoryEvent[]
-  createdAt         DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt         DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdAt         DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime                 @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@index([tenantId])
   @@index([tenantId, templateId])
@@ -87,19 +88,19 @@ model ReviewSession {
 }
 
 model ReviewApprovalDecision {
-  id              String        @id @default(uuid()) @db.Uuid
-  tenantId        String        @map("tenant_id") @db.Uuid
-  reviewSessionId String        @map("review_session_id") @db.Uuid
-  reviewSession   ReviewSession @relation(fields: [reviewSessionId], references: [id], onDelete: Cascade)
-  templateId      String        @map("template_id") @db.Uuid
-  templateVersionId String      @map("template_version_id") @db.Uuid
-  snapshotId      String        @map("snapshot_id") @db.Uuid
-  decision        String
-  reviewer        Json          @db.JsonB
-  comment         String?
-  approvalToken   String?       @map("approval_token")
-  rawPayload      Json          @map("raw_payload") @db.JsonB
-  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  id                String        @id @default(uuid()) @db.Uuid
+  tenantId          String        @map("tenant_id") @db.Uuid
+  reviewSessionId   String        @map("review_session_id") @db.Uuid
+  reviewSession     ReviewSession @relation(fields: [reviewSessionId], references: [id], onDelete: Cascade)
+  templateId        String        @map("template_id") @db.Uuid
+  templateVersionId String        @map("template_version_id") @db.Uuid
+  snapshotId        String        @map("snapshot_id") @db.Uuid
+  decision          String
+  reviewer          Json          @db.JsonB
+  comment           String?
+  approvalToken     String?       @map("approval_token")
+  rawPayload        Json          @map("raw_payload") @db.JsonB
+  createdAt         DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([tenantId])
   @@index([tenantId, reviewSessionId])
@@ -109,17 +110,17 @@ model ReviewApprovalDecision {
 }
 
 model ReviewHistoryEvent {
-  id              String        @id @default(uuid()) @db.Uuid
-  tenantId        String        @map("tenant_id") @db.Uuid
-  reviewSessionId String        @map("review_session_id") @db.Uuid
-  reviewSession   ReviewSession @relation(fields: [reviewSessionId], references: [id], onDelete: Cascade)
-  templateId      String        @map("template_id") @db.Uuid
-  templateVersionId String      @map("template_version_id") @db.Uuid
-  type            String
-  message         String
-  metadata        Json?         @db.JsonB
-  rawPayload      Json          @map("raw_payload") @db.JsonB
-  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  id                String        @id @default(uuid()) @db.Uuid
+  tenantId          String        @map("tenant_id") @db.Uuid
+  reviewSessionId   String        @map("review_session_id") @db.Uuid
+  reviewSession     ReviewSession @relation(fields: [reviewSessionId], references: [id], onDelete: Cascade)
+  templateId        String        @map("template_id") @db.Uuid
+  templateVersionId String        @map("template_version_id") @db.Uuid
+  type              String
+  message           String
+  metadata          Json?         @db.JsonB
+  rawPayload        Json          @map("raw_payload") @db.JsonB
+  createdAt         DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([tenantId])
   @@index([tenantId, reviewSessionId])
@@ -152,21 +153,21 @@ model PolicyReview {
 }
 
 model AuditReport {
-  id                String          @id @default(uuid()) @db.Uuid
-  tenantId          String          @map("tenant_id") @db.Uuid
-  templateVersionId String          @unique @map("template_version_id") @db.Uuid
-  templateVersion   TemplateVersion @relation(fields: [templateVersionId], references: [id], onDelete: Cascade)
-  status            String
-  riskLevel         String          @map("risk_level")
-  summary           String
-  blockingIssues    Json            @default("[]") @map("blocking_issues") @db.JsonB
-  warnings          Json            @default("[]") @db.JsonB
-  recommendedActions Json           @default("[]") @map("recommended_actions") @db.JsonB
-  checklist         Json            @default("[]") @db.JsonB
-  submissionGate    Json            @map("submission_gate") @db.JsonB
-  rawPayload        Json            @map("raw_payload") @db.JsonB
-  createdAt         DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt         DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id                 String          @id @default(uuid()) @db.Uuid
+  tenantId           String          @map("tenant_id") @db.Uuid
+  templateVersionId  String          @unique @map("template_version_id") @db.Uuid
+  templateVersion    TemplateVersion @relation(fields: [templateVersionId], references: [id], onDelete: Cascade)
+  status             String
+  riskLevel          String          @map("risk_level")
+  summary            String
+  blockingIssues     Json            @default("[]") @map("blocking_issues") @db.JsonB
+  warnings           Json            @default("[]") @db.JsonB
+  recommendedActions Json            @default("[]") @map("recommended_actions") @db.JsonB
+  checklist          Json            @default("[]") @db.JsonB
+  submissionGate     Json            @map("submission_gate") @db.JsonB
+  rawPayload         Json            @map("raw_payload") @db.JsonB
+  createdAt          DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@index([tenantId])
   @@index([tenantId, status])

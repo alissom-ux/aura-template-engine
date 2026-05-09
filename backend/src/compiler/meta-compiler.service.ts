@@ -23,8 +23,9 @@ export class MetaCompilerService {
   private readonly templateCompiler = new MetaTemplateCompiler();
   private readonly validator = new MetaPayloadValidator();
 
-  compile(request: MetaCompilerRequest): MetaCompiledTemplate {
-    const session = this.reviewService.findSession(request.reviewSessionId);
+  async compile(request: MetaCompilerRequest): Promise<MetaCompiledTemplate> {
+    const session = this.reviewService.findSession(request.reviewSessionId)
+      ?? (await this.reviewService.recoverSession(request.reviewSessionId))?.session;
     if (!session) {
       return failed("compiler.review_session_not_found", "Review session not found.", request.reviewSessionId);
     }
@@ -57,7 +58,7 @@ export class MetaCompilerService {
     const decisionTrace = this.reviewService.appendDecisionTrace(session.id, trace);
     const allArtifacts = this.reviewService.appendArtifacts(session.id, artifacts);
 
-    return {
+    const result: MetaCompiledTemplate = {
       success: validation.valid,
       compiled: validation.valid,
       compileChecksum,
@@ -73,6 +74,8 @@ export class MetaCompilerService {
             details: validation.errors,
           },
     };
+    await this.reviewService.persistOperationalState(session.id, result);
+    return result;
   }
 }
 

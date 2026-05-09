@@ -41,6 +41,10 @@ export class ReviewService {
     return reviewSessions.get(sessionId) ?? null;
   }
 
+  async recoverSession(sessionId: string): Promise<HydratedReviewSession | null> {
+    return this.hydrateFromPersistence(sessionId);
+  }
+
   getDecisionTrace(sessionId: string): DecisionTraceEntry[] {
     return getTrace(sessionId);
   }
@@ -59,6 +63,19 @@ export class ReviewService {
     const next = [...getArtifacts(sessionId), ...artifacts];
     reviewArtifacts.set(sessionId, next);
     return next;
+  }
+
+  async persistOperationalState(sessionId: string, reviewResult?: unknown): Promise<void> {
+    try {
+      await this.persistence.persistOperationalState({
+        sessionId,
+        decisionTrace: getTrace(sessionId),
+        artifacts: getArtifacts(sessionId),
+        reviewResult,
+      });
+    } catch (error) {
+      console.error({ error, sessionId }, "review operational state persistence failed");
+    }
   }
 
   async approve(sessionId: string, request: ReviewActionRequest): Promise<ReviewActionResult> {

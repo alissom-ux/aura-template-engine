@@ -17,8 +17,9 @@ COPY tsconfig.json ./
 COPY prisma ./prisma
 COPY src ./src
 
-# Prisma generate does not need the production database, but the schema references DATABASE_URL.
-ENV DATABASE_URL="postgresql://user:password@localhost:5432/postgres"
+# Prisma generate does not need the production database, but the schema references both URLs.
+ENV DATABASE_URL="postgresql://postgres.PROJECT_REF:PASSWORD@aws-1-sa-east-1.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1&sslmode=require"
+ENV DIRECT_URL="postgresql://postgres.PROJECT_REF:PASSWORD@aws-1-sa-east-1.pooler.supabase.com:5432/postgres?sslmode=require"
 
 RUN npm run prisma:generate
 RUN npm run build

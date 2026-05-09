@@ -10,7 +10,9 @@
     "lint": "eslint src/**/*.ts",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate deploy",
-    "prisma:seed": "tsx prisma/seed.ts"
+    "prisma:validate-cloud": "node scripts/validate-supabase-cloud.js",
+    "prisma:seed": "tsx prisma/seed.ts",
+    "test:agents": "tsx scripts/test-agents.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.24.3",

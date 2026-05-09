@@ -24,6 +24,8 @@ import {
   TonePrimary,
   validateSemanticTemplate,
 } from "../core/index.js";
+import { AuditorAgent, CopywriterAgent, StrategistAgent } from "../agents/index.js";
+import { PipelineLogger } from "../ai/index.js";
 import type {
   PipelineBusinessContextResolution,
   PipelineError,
@@ -40,6 +42,10 @@ export class TemplatePipelineOrchestrator {
   private readonly auditEngine = new AuditEngine();
   private readonly approvalGateEngine = new ApprovalGateEngine();
   private readonly reviewService = new ReviewService();
+  private readonly strategistAgent = new StrategistAgent();
+  private readonly copywriterAgent = new CopywriterAgent();
+  private readonly auditorAgent = new AuditorAgent();
+  private readonly logger = new PipelineLogger();
 
   async createDraft(request: TemplateDraftPipelineRequest): Promise<TemplateDraftPipelineResult> {
     let executionContext = this.promptAssembly.createExecutionContext({
@@ -70,7 +76,12 @@ export class TemplatePipelineOrchestrator {
 
       executionContext = this.recordBusinessContextArtifact(executionContext, resolved.businessContext);
 
-      const strategistResult = this.strategistEngine.run({
+      this.logger.info({
+        executionId: executionContext.id,
+        agent: AgentType.Strategist,
+        stage: "pipeline.strategy.start",
+      });
+      const strategistResult = await this.strategistAgent.runOperational({
         rawIntent: request.userPrompt,
         businessContextId: resolved.businessContext.id,
         requestedCategory: request.defaults?.category,
@@ -88,13 +99,26 @@ export class TemplatePipelineOrchestrator {
 
       executionContext = this.recordStrategyArtifacts(executionContext, strategistResult);
       executionContext = this.recordStrategyDecisions(executionContext, strategistResult);
+      warnings.push(...strategistResult.strategicGuidance.aiWarnings);
 
-      const realization = this.realizationEngine.realize({
+      this.logger.info({
+        executionId: executionContext.id,
+        agent: AgentType.Copywriter,
+        stage: "pipeline.copy.start",
+      });
+      const baselineRealization = this.realizationEngine.realize({
         businessContext: resolved.businessContext,
         communicationStrategy: strategistResult.communicationStrategy,
         semanticTemplateModel: strategistResult.semanticTemplateModel,
       });
+      const realization = await this.copywriterAgent.writeDraft({
+        businessContext: resolved.businessContext,
+        communicationStrategy: strategistResult.communicationStrategy,
+        semanticTemplateModel: strategistResult.semanticTemplateModel,
+        baseline: baselineRealization,
+      });
       warnings.push(...realization.warnings);
+      warnings.push(...realization.aiWarnings);
       executionContext = this.recordRealizationArtifacts(executionContext, realization);
       executionContext = this.recordRealizationDecisions(executionContext, realization);
 
@@ -169,7 +193,13 @@ export class TemplatePipelineOrchestrator {
         });
       }
 
-      const auditReport = this.auditEngine.audit({
+      this.logger.info({
+        executionId: executionContext.id,
+        agent: AgentType.Auditor,
+        stage: "pipeline.audit.start",
+      });
+      const auditReport = await this.auditorAgent.auditDraft({
+        businessContext: resolved.businessContext,
         validation,
         policyReview,
         semanticTemplateModel: strategistResult.semanticTemplateModel,

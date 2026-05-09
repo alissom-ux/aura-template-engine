@@ -42,6 +42,9 @@ export class TemplateService {
     const template = store.get(id);
     if (!template) return { success: false, error: "Template not found" };
     // Meta API integration — to be implemented in Phase 3
-    return { success: false, error: "Meta API integration not yet implemented" };
+    return {
+      success: false,
+      error: "Legacy in-memory template submission is disabled. Use /pipeline/compiler/meta and /pipeline/meta/submit.",
+    };
   }
 }

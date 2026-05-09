@@ -1,21 +1,39 @@
-version: "3.8"
-
 services:
   aura_backend:
-    image: aura-template-backend:1.0
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: aura-template-backend:${AURA_BACKEND_TAG:-latest}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.templatebuilder.rule=Host(`templatebuilder.appaura.com.br`)"
+      - "traefik.http.routers.templatebuilder.entrypoints=websecure"
+      - "traefik.http.routers.templatebuilder.tls.certresolver=letsencryptresolver"
+      - "traefik.http.services.templatebuilder.loadbalancer.server.port=3001"
+      - "traefik.docker.network=root_default"
+
     environment:
       NODE_ENV: production
+      AURA_RUNTIME_MODE: ${AURA_RUNTIME_MODE:-DEV}
+      AURA_AI_MODE: ${AURA_AI_MODE:-openai}
+      AURA_AI_TEMPERATURE: ${AURA_AI_TEMPERATURE:-0.3}
+      AURA_AI_TIMEOUT_MS: ${AURA_AI_TIMEOUT_MS:-30000}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5.5-mini}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       HOST: 0.0.0.0
       PORT: "3001"
-      DATABASE_URL: ${DATABASE_URL:-postgresql://supabase_admin:PASSWORD@supabase_db:5432/postgres}
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
+      DIRECT_URL: ${DIRECT_URL:?DIRECT_URL is required}
       TEMPLATE_ENGINE_DEFAULT_TENANT_ID: ${TEMPLATE_ENGINE_DEFAULT_TENANT_ID:-00000000-0000-0000-0000-000000000001}
+      META_GRAPH_VERSION: ${META_GRAPH_VERSION:-v25.0}
+      META_ACCESS_TOKEN: ${META_ACCESS_TOKEN:-}
+      META_WABA_ID: ${META_WABA_ID:-}
     ports:
       - target: 3001
-        published: ${AURA_BACKEND_PORT:-3001}
+        published: ${AURA_BACKEND_PORT:-3011}
         protocol: tcp
         mode: ingress
-    networks:
-      - MaternaNet
+
     healthcheck:
       test:
         [
@@ -56,7 +74,4 @@ services:
         max-size: "10m"
         max-file: "3"
 
-networks:
-  MaternaNet:
-    external: true
-    name: MaternaNet
+

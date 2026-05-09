@@ -152,4 +152,20 @@ export class ReviewSessionRepository {
       return updated;
     });
   }
+
+  async persistOperationalState(input: {
+    sessionId: string;
+    decisionTrace: Prisma.InputJsonValue;
+    artifacts: Prisma.InputJsonValue;
+    reviewResult?: Prisma.InputJsonValue;
+  }): Promise<PersistedReviewSessionRecord> {
+    return prisma.reviewSession.update({
+      where: { id: input.sessionId },
+      data: {
+        decisionTrace: input.decisionTrace,
+        artifacts: input.artifacts,
+        reviewResult: input.reviewResult,
+      },
+    });
+  }
 }

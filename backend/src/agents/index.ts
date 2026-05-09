@@ -13,6 +13,12 @@ import { PolicyReviewerAgent } from "./policy-reviewer.agent.js";
 import { CompilerAgent } from "./compiler.agent.js";
 import { AuditorAgent } from "./auditor.agent.js";
 
+export { StrategistAgent } from "./strategist.agent.js";
+export { CopywriterAgent } from "./copywriter.agent.js";
+export { PolicyReviewerAgent } from "./policy-reviewer.agent.js";
+export { CompilerAgent } from "./compiler.agent.js";
+export { AuditorAgent } from "./auditor.agent.js";
+
 export class AgentOrchestrator {
   private agents = {
     strategist: new StrategistAgent(),

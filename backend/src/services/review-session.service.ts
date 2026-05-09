@@ -131,6 +131,20 @@ export class ReviewSessionPersistenceService {
     );
   }
 
+  async persistOperationalState(input: {
+    sessionId: string;
+    decisionTrace: DecisionTraceEntry[];
+    artifacts: ExecutionArtifact[];
+    reviewResult?: unknown;
+  }): Promise<void> {
+    await this.repository.persistOperationalState({
+      sessionId: input.sessionId,
+      decisionTrace: toJson(input.decisionTrace),
+      artifacts: toJson(input.artifacts),
+      reviewResult: input.reviewResult ? toJson(input.reviewResult) : undefined,
+    });
+  }
+
   async checkRepositoryAccess(tenantId = DEFAULT_TENANT_ID): Promise<void> {
     await this.repository.assertAccessible(tenantId);
   }

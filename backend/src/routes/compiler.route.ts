@@ -27,7 +27,7 @@ export async function compilerRoutes(app: FastifyInstance) {
       });
     }
 
-    const result = service.compile(body.data);
+    const result = await service.compile(body.data);
     return reply.status(result.success ? 200 : 422).send(result);
   });
 }

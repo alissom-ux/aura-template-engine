@@ -16,6 +16,7 @@ import type {
 } from "../compiler/index.js";
 import { ReviewService } from "../review/index.js";
 import { MetaApiClient } from "./meta-api.client.js";
+import { readAiConfig, RuntimeMode } from "../ai/index.js";
 import {
   type MetaApiClientConfig,
   type MetaSubmissionError,
@@ -27,10 +28,12 @@ import { MetaSubmissionState } from "./submission-state.model.js";
 export class MetaSubmissionService {
   private readonly reviewService = new ReviewService();
   private readonly metaApiClient = new MetaApiClient();
+  private readonly runtimeMode = readAiConfig().runtimeMode;
 
   async submit(request: MetaSubmissionRequest): Promise<MetaSubmissionResult> {
     const dryRun = request.dryRun ?? true;
-    const session = this.reviewService.findSession(request.reviewSessionId);
+    const session = this.reviewService.findSession(request.reviewSessionId)
+      ?? (await this.reviewService.recoverSession(request.reviewSessionId))?.session;
 
     if (!session) {
       return failed(MetaSubmissionState.Failed, dryRun, "submission.review_session_not_found", "Review session not found.");
@@ -70,7 +73,7 @@ export class MetaSubmissionService {
         undefined
       );
 
-      return {
+      const response = {
         success: true,
         state: MetaSubmissionState.DryRunReady,
         dryRun: true,
@@ -79,6 +82,18 @@ export class MetaSubmissionService {
         decisionTrace: result.decisionTrace,
         artifacts: result.artifacts,
       };
+      await this.reviewService.persistOperationalState(session.id, response);
+      return response;
+    }
+
+    if (this.runtimeMode !== RuntimeMode.Prod) {
+      return failedWithSession(
+        this.reviewService,
+        session,
+        false,
+        "submission.disabled_in_dev",
+        "Real Meta submission is disabled unless AURA_RUNTIME_MODE=PROD."
+      );
     }
 
     const envResult = readMetaEnv();
@@ -113,7 +128,7 @@ export class MetaSubmissionService {
       apiResult.response
     );
 
-    return {
+    const response = {
       success: true,
       state: MetaSubmissionState.MetaPending,
       dryRun: false,
@@ -128,6 +143,8 @@ export class MetaSubmissionService {
       decisionTrace: recorded.decisionTrace,
       artifacts: recorded.artifacts,
     };
+    await this.reviewService.persistOperationalState(session.id, response);
+    return response;
   }
 
   private validatePreflight(
