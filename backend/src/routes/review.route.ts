@@ -17,7 +17,7 @@ export async function reviewRoutes(app: FastifyInstance) {
     if (!parsed.success) return reply.status(400).send(parsed.response);
 
     const { sessionId } = request.params as { sessionId: string };
-    return sendReviewResult(reply, service.approve(sessionId, parsed.data));
+    return sendReviewResult(reply, await service.approve(sessionId, parsed.data));
   });
 
   app.post("/:sessionId/reject", async (request, reply) => {
@@ -25,7 +25,7 @@ export async function reviewRoutes(app: FastifyInstance) {
     if (!parsed.success) return reply.status(400).send(parsed.response);
 
     const { sessionId } = request.params as { sessionId: string };
-    return sendReviewResult(reply, service.reject(sessionId, parsed.data));
+    return sendReviewResult(reply, await service.reject(sessionId, parsed.data));
   });
 
   app.post("/:sessionId/request-changes", async (request, reply) => {
@@ -33,7 +33,7 @@ export async function reviewRoutes(app: FastifyInstance) {
     if (!parsed.success) return reply.status(400).send(parsed.response);
 
     const { sessionId } = request.params as { sessionId: string };
-    return sendReviewResult(reply, service.requestChanges(sessionId, parsed.data));
+    return sendReviewResult(reply, await service.requestChanges(sessionId, parsed.data));
   });
 }
 
@@ -57,7 +57,7 @@ function parseRequest(body: unknown) {
 
 function sendReviewResult(
   reply: { status: (code: number) => { send: (payload: unknown) => unknown } },
-  result: ReturnType<ReviewService["approve"]>
+  result: Awaited<ReturnType<ReviewService["approve"]>>
 ) {
   if (result.success) {
     return reply.status(200).send(result);

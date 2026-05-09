@@ -52,11 +52,30 @@ export class TemplatePersistenceService {
       reviewSession: result.reviewSession
         ? {
             id: result.reviewSession.id,
+            executionId: result.reviewSession.executionId,
             status: result.reviewSession.status,
             snapshotHash: result.reviewSession.currentSnapshot.hash,
             snapshotVersion: result.reviewSession.currentSnapshot.version,
             snapshotPayload: toJson(result.reviewSnapshot ?? result.reviewSession.currentSnapshot),
             approvalState: toJson(result.reviewSession.approvalGate),
+            decisionsPayload: toJson(result.reviewSession.decisions),
+            historyPayload: toJson(result.reviewSession.history),
+            decisionTrace: toJson(result.decisionTrace ?? []),
+            artifacts: toJson([
+              {
+                label: "review_session.created",
+                value: result.reviewSession,
+                createdAt: new Date().toISOString(),
+              },
+            ]),
+            historyEvents: result.reviewSession.history.events.map((event) => ({
+              id: event.id,
+              type: event.type.toLowerCase(),
+              message: event.message,
+              metadata: event.metadata ? toJson(event.metadata) : undefined,
+              rawPayload: toJson(event),
+              createdAt: new Date(event.createdAt),
+            })),
           }
         : undefined,
     });

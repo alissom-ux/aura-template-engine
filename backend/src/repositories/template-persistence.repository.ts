@@ -36,11 +36,24 @@ export interface PersistTemplateDraftInput {
   };
   reviewSession?: {
     id?: string;
+    executionId?: string;
     status: string;
     snapshotHash?: string;
     snapshotVersion?: number;
     snapshotPayload?: Prisma.InputJsonValue;
     approvalState: Prisma.InputJsonValue;
+    decisionsPayload?: Prisma.InputJsonValue;
+    historyPayload?: Prisma.InputJsonValue;
+    decisionTrace?: Prisma.InputJsonValue;
+    artifacts?: Prisma.InputJsonValue;
+    historyEvents?: Array<{
+      id: string;
+      type: string;
+      message: string;
+      metadata?: Prisma.InputJsonValue;
+      rawPayload: Prisma.InputJsonValue;
+      createdAt: Date;
+    }>;
   };
 }
 
@@ -106,14 +119,36 @@ export class TemplatePersistenceRepository {
             tenantId: input.tenantId,
             templateId: template.id,
             templateVersionId: version.id,
+            executionId: input.reviewSession.executionId,
             status: input.reviewSession.status,
             snapshotHash: input.reviewSession.snapshotHash,
             snapshotVersion: input.reviewSession.snapshotVersion,
             snapshotPayload: input.reviewSession.snapshotPayload,
             approvalState: input.reviewSession.approvalState,
+            decisionsPayload: input.reviewSession.decisionsPayload ?? [],
+            historyPayload: input.reviewSession.historyPayload ?? {},
+            decisionTrace: input.reviewSession.decisionTrace ?? [],
+            artifacts: input.reviewSession.artifacts ?? [],
           },
         });
         reviewSessionId = reviewSession.id;
+
+        for (const event of input.reviewSession.historyEvents ?? []) {
+          await tx.reviewHistoryEvent.create({
+            data: {
+              id: event.id,
+              tenantId: input.tenantId,
+              reviewSessionId: reviewSession.id,
+              templateId: template.id,
+              templateVersionId: version.id,
+              type: event.type,
+              message: event.message,
+              metadata: event.metadata,
+              rawPayload: event.rawPayload,
+              createdAt: event.createdAt,
+            },
+          });
+        }
       }
 
       await tx.template.update({

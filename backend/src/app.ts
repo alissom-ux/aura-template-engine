@@ -24,8 +24,13 @@ export function buildApp() {
   app.get("/health", async () => ({ status: "ok", version: "0.1.0" }));
   app.get("/health/db", async (_request, reply) => {
     try {
-      await databaseHealth.check();
-      return { status: "ok", database: "connected", schema: "template_engine" };
+      const database = await databaseHealth.check();
+      return {
+        status: "ok",
+        database: "connected",
+        schema: "template_engine",
+        reviewRepository: database.reviewRepository,
+      };
     } catch (error) {
       app.log.error(error);
       return reply.status(503).send({

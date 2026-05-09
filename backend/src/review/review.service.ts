@@ -12,6 +12,7 @@ import {
   type HumanReviewer,
   type ReviewSession,
 } from "../core/index.js";
+import { ReviewSessionPersistenceService, type HydratedReviewSession } from "../services/review-session.service.js";
 import type {
   ReviewActionRequest,
   ReviewActionResult,
@@ -23,6 +24,7 @@ const reviewArtifacts = new Map<string, ExecutionArtifact[]>();
 
 export class ReviewService {
   private readonly approvalGateEngine = new ApprovalGateEngine();
+  private readonly persistence = new ReviewSessionPersistenceService();
 
   saveSession(session: ReviewSession): ReviewSession {
     reviewSessions.set(session.id, session);
@@ -59,24 +61,25 @@ export class ReviewService {
     return next;
   }
 
-  approve(sessionId: string, request: ReviewActionRequest): ReviewActionResult {
+  async approve(sessionId: string, request: ReviewActionRequest): Promise<ReviewActionResult> {
     return this.applyDecision(sessionId, request, ApprovalDecisionType.Approve);
   }
 
-  reject(sessionId: string, request: ReviewActionRequest): ReviewActionResult {
+  async reject(sessionId: string, request: ReviewActionRequest): Promise<ReviewActionResult> {
     return this.applyDecision(sessionId, request, ApprovalDecisionType.Reject);
   }
 
-  requestChanges(sessionId: string, request: ReviewActionRequest): ReviewActionResult {
+  async requestChanges(sessionId: string, request: ReviewActionRequest): Promise<ReviewActionResult> {
     return this.applyDecision(sessionId, request, ApprovalDecisionType.RequestChanges);
   }
 
-  private applyDecision(
+  private async applyDecision(
     sessionId: string,
     request: ReviewActionRequest,
     decision: ApprovalDecisionType
-  ): ReviewActionResult {
-    const existing = this.findSession(sessionId);
+  ): Promise<ReviewActionResult> {
+    const persistent = await this.hydrateFromPersistence(sessionId);
+    const existing = persistent?.session ?? this.findSession(sessionId);
     if (!existing) {
       return {
         success: false,
@@ -129,12 +132,12 @@ export class ReviewService {
 
     const latestDecision = updated.decisions.at(-1);
     const trace = [
-      ...getTrace(updated.id),
+      ...(persistent?.decisionTrace ?? getTrace(updated.id)),
       createDecisionTrace(updated, decision),
       createGateTrace(updated),
     ];
     const artifacts = [
-      ...getArtifacts(updated.id),
+      ...(persistent?.artifacts ?? getArtifacts(updated.id)),
       createArtifact("review_session.updated", updated),
       createArtifact("approval_decision", latestDecision),
       createArtifact("approval_gate.updated", updated.approvalGate),
@@ -143,7 +146,7 @@ export class ReviewService {
     reviewDecisionTrace.set(updated.id, trace);
     reviewArtifacts.set(updated.id, artifacts);
 
-    return {
+    const result: ReviewActionResult = {
       success: true,
       reviewStatus: updated.status,
       gateStatus: updated.approvalGate.status,
@@ -155,6 +158,31 @@ export class ReviewService {
       reviewSession: updated,
       decision: latestDecision,
     };
+
+    if (persistent) {
+      try {
+        await this.persistence.persistReviewResult(persistent, result);
+      } catch (error) {
+        console.error({ error, sessionId: updated.id }, "review persistence failed after action");
+      }
+    }
+
+    return result;
+  }
+
+  private async hydrateFromPersistence(sessionId: string): Promise<HydratedReviewSession | null> {
+    try {
+      const hydrated = await this.persistence.hydrate(sessionId);
+      if (!hydrated) return null;
+      reviewSessions.set(hydrated.session.id, hydrated.session);
+      reviewDecisionTrace.set(hydrated.session.id, hydrated.decisionTrace);
+      reviewArtifacts.set(hydrated.session.id, hydrated.artifacts);
+      console.info({ sessionId, status: hydrated.session.status }, "review recovered from persistent store");
+      return hydrated;
+    } catch (error) {
+      console.error({ error, sessionId }, "review hydration failed; falling back to memory");
+      return null;
+    }
   }
 }
 

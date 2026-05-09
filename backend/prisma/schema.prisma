@@ -59,11 +59,23 @@ model ReviewSession {
   templateId        String          @map("template_id") @db.Uuid
   templateVersionId String          @map("template_version_id") @db.Uuid
   templateVersion   TemplateVersion @relation(fields: [templateVersionId], references: [id], onDelete: Cascade)
+  executionId       String?         @map("execution_id") @db.Uuid
   status            String
+  reviewer          Json?           @db.JsonB
+  comment           String?
   snapshotHash      String?         @map("snapshot_hash")
   snapshotVersion   Int?            @map("snapshot_version")
   snapshotPayload   Json?           @map("snapshot_payload") @db.JsonB
   approvalState     Json            @map("approval_state") @db.JsonB
+  decisionsPayload  Json            @default("[]") @map("decisions_payload") @db.JsonB
+  historyPayload    Json            @default("{}") @map("history_payload") @db.JsonB
+  decisionTrace     Json            @default("[]") @map("decision_trace") @db.JsonB
+  artifacts         Json            @default("[]") @db.JsonB
+  reviewResult      Json?           @map("review_result") @db.JsonB
+  approvalToken     String?         @map("approval_token")
+  decidedAt         DateTime?       @map("decided_at") @db.Timestamptz(6)
+  decisions         ReviewApprovalDecision[]
+  events            ReviewHistoryEvent[]
   createdAt         DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt         DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
 
@@ -71,6 +83,48 @@ model ReviewSession {
   @@index([tenantId, templateId])
   @@index([tenantId, templateVersionId])
   @@map("review_sessions")
+  @@schema("template_engine")
+}
+
+model ReviewApprovalDecision {
+  id              String        @id @default(uuid()) @db.Uuid
+  tenantId        String        @map("tenant_id") @db.Uuid
+  reviewSessionId String        @map("review_session_id") @db.Uuid
+  reviewSession   ReviewSession @relation(fields: [reviewSessionId], references: [id], onDelete: Cascade)
+  templateId      String        @map("template_id") @db.Uuid
+  templateVersionId String      @map("template_version_id") @db.Uuid
+  snapshotId      String        @map("snapshot_id") @db.Uuid
+  decision        String
+  reviewer        Json          @db.JsonB
+  comment         String?
+  approvalToken   String?       @map("approval_token")
+  rawPayload      Json          @map("raw_payload") @db.JsonB
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([tenantId])
+  @@index([tenantId, reviewSessionId])
+  @@index([tenantId, templateId])
+  @@map("review_approval_decisions")
+  @@schema("template_engine")
+}
+
+model ReviewHistoryEvent {
+  id              String        @id @default(uuid()) @db.Uuid
+  tenantId        String        @map("tenant_id") @db.Uuid
+  reviewSessionId String        @map("review_session_id") @db.Uuid
+  reviewSession   ReviewSession @relation(fields: [reviewSessionId], references: [id], onDelete: Cascade)
+  templateId      String        @map("template_id") @db.Uuid
+  templateVersionId String      @map("template_version_id") @db.Uuid
+  type            String
+  message         String
+  metadata        Json?         @db.JsonB
+  rawPayload      Json          @map("raw_payload") @db.JsonB
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([tenantId])
+  @@index([tenantId, reviewSessionId])
+  @@index([tenantId, type])
+  @@map("review_history_events")
   @@schema("template_engine")
 }
 
