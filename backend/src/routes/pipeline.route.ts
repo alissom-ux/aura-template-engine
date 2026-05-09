@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { TemplateCategory } from "../core/index.js";
 import { TemplatePipelineOrchestrator } from "../pipeline/index.js";
+import { TemplatePersistenceService } from "../services/template-persistence.service.js";
 
 const DraftTemplateRequestSchema = z.object({
   userPrompt: z.string().min(10),
@@ -25,6 +26,7 @@ const DraftTemplateRequestSchema = z.object({
 
 export async function pipelineRoutes(app: FastifyInstance) {
   const orchestrator = new TemplatePipelineOrchestrator();
+  const persistence = new TemplatePersistenceService();
 
   app.post("/template/draft", async (request, reply) => {
     const body = DraftTemplateRequestSchema.safeParse(request.body);
@@ -36,6 +38,25 @@ export async function pipelineRoutes(app: FastifyInstance) {
     }
 
     const result = await orchestrator.createDraft(body.data);
-    return reply.status(result.success ? 200 : 422).send(result);
+
+    try {
+      const persisted = await persistence.persistDraft(body.data, result);
+      return reply.status(result.success ? 200 : 422).send({
+        ...result,
+        persistence: {
+          saved: true,
+          ...persisted,
+        },
+      });
+    } catch (error) {
+      request.log.error({ error }, "Failed to persist template draft.");
+      return reply.status(result.success ? 200 : 422).send({
+        ...result,
+        persistence: {
+          saved: false,
+          error: "draft_persistence_failed",
+        },
+      });
+    }
   });
 }

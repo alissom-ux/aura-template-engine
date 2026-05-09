@@ -1,0 +1,121 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["template_engine"]
+}
+
+model Template {
+  id               String            @id @default(uuid()) @db.Uuid
+  tenantId         String            @map("tenant_id") @db.Uuid
+  title            String
+  sourcePrompt     String            @map("source_prompt")
+  status           String            @default("DRAFT")
+  currentVersionId String?           @unique @map("current_version_id") @db.Uuid
+  currentVersion   TemplateVersion?  @relation("TemplateCurrentVersion", fields: [currentVersionId], references: [id])
+  versions         TemplateVersion[] @relation("TemplateVersions")
+  createdAt        DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("templates")
+  @@schema("template_engine")
+}
+
+model TemplateVersion {
+  id                    String          @id @default(uuid()) @db.Uuid
+  tenantId              String          @map("tenant_id") @db.Uuid
+  templateId            String          @map("template_id") @db.Uuid
+  template              Template        @relation("TemplateVersions", fields: [templateId], references: [id], onDelete: Cascade)
+  currentForTemplate    Template?       @relation("TemplateCurrentVersion")
+  versionNumber         Int             @map("version_number")
+  sourcePrompt          String          @map("source_prompt")
+  campaignIntent        Json            @map("campaign_intent") @db.JsonB
+  communicationStrategy Json            @map("communication_strategy") @db.JsonB
+  templateComponents    Json            @map("template_components") @db.JsonB
+  variants              Json            @default("[]") @db.JsonB
+  approvalState         Json            @map("approval_state") @db.JsonB
+  status                String          @default("GENERATED")
+  reviewSessions        ReviewSession[]
+  policyReview          PolicyReview?
+  auditReport           AuditReport?
+  createdAt             DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([templateId, versionNumber])
+  @@index([tenantId])
+  @@index([tenantId, templateId])
+  @@map("template_versions")
+  @@schema("template_engine")
+}
+
+model ReviewSession {
+  id                String          @id @default(uuid()) @db.Uuid
+  tenantId          String          @map("tenant_id") @db.Uuid
+  templateId        String          @map("template_id") @db.Uuid
+  templateVersionId String          @map("template_version_id") @db.Uuid
+  templateVersion   TemplateVersion @relation(fields: [templateVersionId], references: [id], onDelete: Cascade)
+  status            String
+  snapshotHash      String?         @map("snapshot_hash")
+  snapshotVersion   Int?            @map("snapshot_version")
+  snapshotPayload   Json?           @map("snapshot_payload") @db.JsonB
+  approvalState     Json            @map("approval_state") @db.JsonB
+  createdAt         DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([tenantId])
+  @@index([tenantId, templateId])
+  @@index([tenantId, templateVersionId])
+  @@map("review_sessions")
+  @@schema("template_engine")
+}
+
+model PolicyReview {
+  id                 String          @id @default(uuid()) @db.Uuid
+  tenantId           String          @map("tenant_id") @db.Uuid
+  templateVersionId  String          @unique @map("template_version_id") @db.Uuid
+  templateVersion    TemplateVersion @relation(fields: [templateVersionId], references: [id], onDelete: Cascade)
+  status             String
+  approved           Boolean
+  confidence         Float
+  risk               Json            @db.JsonB
+  categoryPrediction Json            @map("category_prediction") @db.JsonB
+  violations         Json            @default("[]") @db.JsonB
+  warnings           Json            @default("[]") @db.JsonB
+  suggestions        Json            @default("[]") @db.JsonB
+  rawPayload         Json            @map("raw_payload") @db.JsonB
+  createdAt          DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("policy_reviews")
+  @@schema("template_engine")
+}
+
+model AuditReport {
+  id                String          @id @default(uuid()) @db.Uuid
+  tenantId          String          @map("tenant_id") @db.Uuid
+  templateVersionId String          @unique @map("template_version_id") @db.Uuid
+  templateVersion   TemplateVersion @relation(fields: [templateVersionId], references: [id], onDelete: Cascade)
+  status            String
+  riskLevel         String          @map("risk_level")
+  summary           String
+  blockingIssues    Json            @default("[]") @map("blocking_issues") @db.JsonB
+  warnings          Json            @default("[]") @db.JsonB
+  recommendedActions Json           @default("[]") @map("recommended_actions") @db.JsonB
+  checklist         Json            @default("[]") @db.JsonB
+  submissionGate    Json            @map("submission_gate") @db.JsonB
+  rawPayload        Json            @map("raw_payload") @db.JsonB
+  createdAt         DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@map("audit_reports")
+  @@schema("template_engine")
+}

@@ -1,0 +1,11 @@
+.git
+**/node_modules
+**/dist
+**/.env
+**/.env.*
+**/*.log
+backend/backend.zip
+frontend
+n8n
+.DS_Store
+Thumbs.db

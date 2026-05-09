@@ -17,15 +17,168 @@ export interface PipelineResponse {
   nextStep?: string;
   warnings?: string[];
   errors?: PipelineError[];
+  campaignIntent?: CampaignIntent;
+  communicationStrategy?: CommunicationStrategy;
   auditReport?: AuditReport;
   policyReview?: PolicyReview;
   templateComponents?: TemplateComponent[];
+  humanReview?: HumanReview;
+  reviewSession?: ReviewSession;
+  reviewSnapshot?: ReviewSnapshot;
+  decisionTrace?: DecisionTraceEntry[];
+  persistence?: PersistenceResult;
 }
 
 export interface PipelineError {
   code: string;
   message: string;
   details?: unknown;
+}
+
+export interface CampaignIntent {
+  type?: string;
+  goal?: string;
+  audience?: string;
+  [key: string]: unknown;
+}
+
+export interface CommunicationStrategy {
+  recommendedCategory?: string;
+  messagingGoal?: string;
+  rationale?: string[];
+  keyMessages?: string[];
+  suggestedVariables?: Array<{
+    name?: string;
+    example?: string;
+    description?: string;
+    [key: string]: unknown;
+  }>;
+  cta?: {
+    label?: string;
+    type?: string;
+    rationale?: string;
+    [key: string]: unknown;
+  };
+  risk?: {
+    level?: string;
+    reasons?: string[];
+    mitigationHints?: string[];
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+}
+
+export interface HumanReview {
+  required: boolean;
+  status: string;
+  reviewSessionId: string;
+  snapshotId: string;
+  snapshotVersion: number;
+  snapshotHash: string;
+  nextAction: string;
+  approvalGate: {
+    status: string;
+    canCompile: boolean;
+    canSubmit: boolean;
+    reason: string;
+    requiresExplicitApproval: boolean;
+    approvalToken?: string;
+  };
+}
+
+export interface ReviewSession {
+  id: string;
+  executionId?: string;
+  status: string;
+  version: number;
+  approvalGate: HumanReview["approvalGate"];
+  currentSnapshot?: ReviewSnapshot;
+  decisions?: ApprovalDecision[];
+  history?: {
+    reviewSessionId: string;
+    events: ReviewHistoryEvent[];
+  };
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface ReviewSnapshot {
+  id: string;
+  reviewSessionId: string;
+  version: number;
+  hash: string;
+  immutable: boolean;
+  createdAt: string;
+  [key: string]: unknown;
+}
+
+export interface PersistenceResult {
+  saved: boolean;
+  templateId?: string;
+  templateVersionId?: string;
+  versionNumber?: number;
+  reviewSessionId?: string;
+  error?: string;
+}
+
+export interface ReviewActionRequest {
+  reviewer: string;
+  comment?: string;
+  snapshotHash: string;
+  snapshotVersion: number;
+}
+
+export interface ReviewActionResult {
+  success: boolean;
+  reviewStatus?: string;
+  gateStatus?: string;
+  canCompile?: boolean;
+  approvalToken?: string;
+  reviewEvents?: ReviewHistoryEvent[];
+  decisionTrace?: DecisionTraceEntry[];
+  artifacts?: unknown[];
+  reviewSession?: ReviewSession;
+  decision?: ApprovalDecision;
+  error?: {
+    code: string;
+    message: string;
+    details?: unknown;
+  };
+}
+
+export interface ApprovalDecision {
+  id: string;
+  reviewSessionId: string;
+  snapshotId: string;
+  decision: string;
+  reviewer: {
+    id: string;
+    name: string;
+    email?: string;
+    role?: string;
+  };
+  comment?: string;
+  approvalToken?: string;
+  createdAt: string;
+}
+
+export interface ReviewHistoryEvent {
+  id: string;
+  reviewSessionId: string;
+  type: string;
+  message: string;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+}
+
+export interface DecisionTraceEntry {
+  id: string;
+  executionId: string;
+  agent: string;
+  kind: string;
+  summary: string;
+  createdAt?: string;
+  [key: string]: unknown;
 }
 
 export interface AuditReport {
